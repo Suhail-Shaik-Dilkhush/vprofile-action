@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  labels:
+    app: tomcat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat
+  template:
+    metadata:
+      labels:
+        app: tomcat
+    spec:
+      containers:
+        - name: tomcat
+          image: shaiksuhaildocker/vprofileapp:latest
+          ports:
+            - name: tomcat-port
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "512Mi"
+            requests:
+              cpu: "0.25"
+              memory: "256Mi"
+      initContainers:
+        - name: mysql-wait-container
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z vprodb 3306; do echo waiting for mysql; sleep 2; done",
+            ]
+        - name: rabbitmq-wait-container
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z vpromq01 5672; do echo waiting for rabbitmq; sleep 2; done",
+            ]
+        - name: memcache-wait-container
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z vprocache01 11211; do echo waiting for memcache; sleep 2; done",
+            ]

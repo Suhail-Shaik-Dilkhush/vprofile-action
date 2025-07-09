@@ -1,0 +1,48 @@
+---
+name: Deploy to EKS
+on: workflow_dispatch
+env:
+  AWS_REGION: "eu-north-1"
+  ECR_REPOSITORY: "vprofile/vproimages"
+  EKS_CLUSTER: "vpro-cluster"
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Testing with Maven
+        run: mvn test
+
+      - name: creating check style fils for analysis
+        run: mvn checkstyle:checkstyle
+
+      - name: setup Java 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: setup sonar qube
+        uses: warchant/setup-sonar-scanner@v7
+
+      - name: SonarQube Scan
+        run: sonar-scanner
+          -Dsonar.host.url=${{ secrets.SONAR_URL }}
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.organiation=${{ secrets.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          -Dsonar.sources=src/ 
+          -Dsonar.junit.reportPaths=target/surefire-reports/
+          -Dsonar.jacoco.reportsPath=target/jacoco.exec
+          -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
+          -Dsonar.java.binaries=target/test-classes/com/visualpathit/account
+      -name : Quality Gate Check
+       id: sonarqube-quality-gate-check
+       uses: sonarsource/sonarqube-quality-gate-action@master
+       timeout-minutes: 5
+       env: 
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+         SONAR_HOST_URL: ${{ secrets.SONAR_URL }}
